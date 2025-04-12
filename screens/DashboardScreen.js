@@ -3,12 +3,16 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useRoute } from '@react-navigation/native';
+import api from '../services/api';
 
 const COLORS = ['#FFD180', '#80D8FF', '#CFD8DC', '#AED581', '#FF8A80'];
 
 const DashboardScreen = ({ navigation }) => {
   const route = useRoute();
-  const { checklistId, checklistTitle } = route.params;
+  // Fixed parameter extraction to match what's sent from ChecklistsScreen
+  const { checklist } = route.params;
+  const checklistId = checklist?.id;
+  const checklistTitle = checklist?.title;
   
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
@@ -69,53 +73,41 @@ const DashboardScreen = ({ navigation }) => {
     ));
   };
 
-const deleteTask = async (taskId) => {
-  Alert.alert(
-    'Delete Task',
-    'Are you sure?',
-    [
-      {
-        text: 'Cancel',
-        style: 'cancel'
-      },
-      {
-        text: 'Delete',
-        onPress: async () => {
-          try {
-            // Call backend API first
-            const response = await fetch(`http://your-api-url/tasks/${taskId}`, {
-              method: 'DELETE',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${userToken}` // Add your auth token
-              }
-            });
+  const deleteTask = async (taskId) => {
+    Alert.alert(
+      'Delete Task',
+      'Are you sure?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          onPress: async () => {
+            try {
+              // Fixed API call to use the api service instead of fetch
+              await api.delete(`/api/tasks/${taskId}`);
+              
+              // Update local state
+              const filteredTasks = tasks.filter(task => task.id !== taskId);
+              setTasks(filteredTasks);
+              
+              // Update AsyncStorage
+              await AsyncStorage.setItem(
+                `tasks_${checklistId}`,
+                JSON.stringify(filteredTasks)
+              );
 
-            const result = await response.json();
-
-            if (!response.ok) {
-              throw new Error(result.message || 'Failed to delete task');
+            } catch (error) {
+              console.error('Delete error:', error);
+              Alert.alert('Error', error.response?.data?.message || 'Failed to delete task');
             }
-
-            // Only update local state if backend deletion succeeds
-            const filteredTasks = tasks.filter(task => task.id !== taskId);
-            setTasks(filteredTasks);
-            
-            // Update AsyncStorage
-            await AsyncStorage.setItem(
-              `tasks_${checklistId}`,
-              JSON.stringify(filteredTasks)
-            );
-
-          } catch (error) {
-            console.error('Delete error:', error);
-            Alert.alert('Error', error.message);
           }
         }
-      }
-    ]
-  );
-};
+      ]
+    );
+  };
   
   const TaskItem = ({ task }) => (
     <View style={[styles.taskItem, {backgroundColor: task.color}]}>

@@ -22,7 +22,7 @@ const ChecklistsScreen = () => {
   const [showInput, setShowInput] = useState(false);
   const navigation = useNavigation();
   const navigateToDashboard = (checklist) => {
-  navigation.navigate('ChecklistDetails', { checklist });
+  navigation.navigate('Dashboard', { checklist });
 };
 
   // Load checklists from storage
